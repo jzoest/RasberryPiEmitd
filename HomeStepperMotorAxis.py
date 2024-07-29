@@ -3,6 +3,7 @@ import time
 import RPi.GPIO as gpio
 import math
 import csv
+import datetime
 
 csv_file ="45deg_movement.txt"
 
@@ -55,6 +56,7 @@ move_out_steps_max_X = 20
 move_out_steps_max_Z = 20
 move_out_steps_max_Y = 20
 
+Calibration_File_Name = "calibration.cal"
 class target_position:
     X = 0
     Y = 0
@@ -129,8 +131,7 @@ def move_to_position(new_position, current_position, step_time):
     
 try:
     while cycle== True:
-        print("Home cycle 1 start")
-        sleep(2)
+        print("Home Axis")
         print('X axis move to start posn')
         gpio.output(direction_pin,cw_direction)
         gpio.output(direction_pin2,cw_direction)
@@ -157,7 +158,7 @@ try:
         print('X axis is at X Home position')
         gpio.output(Green_led,gpio.LOW) # Green led off
         sleep(1)
-        print('X axis move to end posn to determin max steps')
+        print('X axis move to end posn to determine max steps')
         gpio.output(direction_pin2,ccw_direction)
         gpio.output(direction_pin,ccw_direction)
         
@@ -171,6 +172,7 @@ try:
                 gpio.output(pulse_pin,gpio.LOW)
                 sleep(.0005)
             sleep(1)
+            
         gpio.output(Green_led,gpio.HIGH) # Green led on    
         while(gpio.input(x_axis_limit) == 0):
             gpio.output(pulse_pin2,gpio.HIGH)
@@ -182,8 +184,8 @@ try:
             x_step_count+=1
             
         print(f"Steps in X axis is {x_step_count}")
-        gpio.output(Green_led,gpio.LOW) # Green led off
         x_max=x_step_count
+        gpio.output(Green_led,gpio.LOW) # Green led off
         sleep(1)
         
         gpio.output(direction_pin,cw_direction)
@@ -239,7 +241,7 @@ try:
                 sleep(.0005)
             sleep(1)
             
-        print("Move to Z axis end")
+        print("Move to Z axis end to count number of steps")
         gpio.output(Green_led,gpio.HIGH) # Green led on
         while(gpio.input(z_axis_limit)==0):
             gpio.output(pulse_pin,gpio.HIGH)
@@ -348,8 +350,88 @@ try:
                 gpio.output(pulse_pin2,gpio.LOW)
                 sleep(.0005)
             sleep(1)
+            
+        print("Y axis calibration move to home position")
         
-        if x_max == 900:
+        gpio.output(direction_pinY,cw_direction)
+        if(gpio.input(y_axis_limit)!=0):
+            for x in range(move_out_steps_max_Y):
+                gpio.output(pulse_pinY,gpio.HIGH)
+                sleep(0.001)
+                gpio.output(pulse_pinY,gpio.LOW)
+                sleep(0.0005)
+            sleep(1)
+            
+        gpio.output(direction_pinY,cw_direction)    
+        while(gpio.input(y_axis_limit)==0):
+            gpio.output(pulse_pinY,gpio.HIGH)
+            sleep(0.001)
+            gpio.output(pulse_pinY,gpio.LOW)
+            sleep(0.0005)
+        sleep(1)
+        print("Y axis is at Home position")
+               
+        print("Y axis calibration")
+        gpio.output(direction_pinY,ccw_direction)
+        if(gpio.input(y_axis_limit)!=0):
+            for x in range(move_out_steps_max_Y):
+                gpio.output(pulse_pinY,gpio.HIGH)
+                sleep(0.001)
+                gpio.output(pulse_pinY,gpio.LOW)
+                sleep(0.0005)
+            sleep(1)
+            
+        while(gpio.input(y_axis_limit)==0):
+            gpio.output(pulse_pinY,gpio.HIGH)
+            sleep(0.001)
+            gpio.output(pulse_pinY,gpio.LOW)
+            sleep(0.0005)
+            y_step_count+=1
+        sleep(1)
+        
+        y_max = y_step_count 
+        print(f"Y axis max steps {y_max}")
+        
+        gpio.output(direction_pinY,cw_direction)
+        if(gpio.input(y_axis_limit)!=0):
+            for x in range(move_out_steps_max_Y):
+                gpio.output(pulse_pinY,gpio.HIGH)
+                sleep(0.001)
+                gpio.output(pulse_pinY,gpio.LOW)
+                sleep(0.0005)
+            sleep(1)
+        
+
+        while(gpio.input(y_axis_limit)==0):
+            gpio.output(pulse_pinY,gpio.HIGH)
+            sleep(0.001)
+            gpio.output(pulse_pinY,gpio.LOW)
+            sleep(0.0005)
+        sleep(1)
+        
+        gpio.output(direction_pinY,ccw_direction)
+        if(gpio.input(y_axis_limit)!=0):
+            for x in range(move_out_steps_max_Y):
+                gpio.output(pulse_pinY,gpio.HIGH)
+                sleep(0.001)
+                gpio.output(pulse_pinY,gpio.LOW)
+                sleep(0.0005)
+            sleep(1)
+        print("Y axis is at Home position")
+        
+        if(x_max > 900 and z_max > 1900):
+            print("Writing Calibration data")
+            calibrationFile = open(Calibration_File_Name,"w")
+            datetime = datetime.datetime.now()
+            header = "DateTime,X_Max,Y_Max,Z_Max\n"
+            calibrationFile.write(header)
+            CalLine = f"{datetime},{x_max},{y_max},{z_max}\n"
+            calibrationFile.write(CalLine)
+            calibrationFile.close()
+        else:
+            print("Using default calibration data")
+        
+        if x_max > 900:
             x_max = 1260
         
         if z_max > 1900:
