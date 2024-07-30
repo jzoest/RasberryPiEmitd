@@ -56,7 +56,9 @@ move_out_steps_max_X = 20
 move_out_steps_max_Z = 20
 move_out_steps_max_Y = 20
 
-Calibration_File_Name = "calibration.cal"
+Calibration_File_Name_start = "CalFile"
+Calibration_File_Name_suffix = "cal"
+
 class target_position:
     X = 0
     Y = 0
@@ -128,6 +130,15 @@ def move_to_position(new_position, current_position, step_time):
                 gpio.output(pulse_pin2,gpio.LOW)
             sleep(step_time/2)
             
+def CreateFileName(x: datetime):
+    year  = x.year
+    month = x.month
+    day   = x.day
+    hr    = x.hour
+    mins  = x.minute
+    sec   = x.second
+    result = f"{Calibration_File_Name_start}{year}{month}{day}T{hr}{mins}{sec}.{Calibration_File_Name_suffix}"
+    return result
     
 try:
     while cycle== True:
@@ -421,11 +432,12 @@ try:
         
         if(x_max > 900 and z_max > 1900):
             print("Writing Calibration data")
-            calibrationFile = open(Calibration_File_Name,"w")
-            datetime = datetime.datetime.now()
+            t = datetime.datetime.now()
+            FileName = CreateFileName(t)
+            calibrationFile = open(FileName,"w")    
             header = "DateTime,X_Max,Y_Max,Z_Max\n"
             calibrationFile.write(header)
-            CalLine = f"{datetime},{x_max},{y_max},{z_max}\n"
+            CalLine = f"{t},{x_max},{y_max},{z_max}\n"
             calibrationFile.write(CalLine)
             calibrationFile.close()
         else:
@@ -437,11 +449,11 @@ try:
         if z_max > 1900:
             z_max = 2824
         
-        for b in range(10):
+        for b in range(2 ):
             gpio.output(Green_led,gpio.HIGH) # Green led on
-            sleep(0.5)
+            sleep(0.25)
             gpio.output(Green_led,gpio.LOW) # Green led off
-            sleep(0.5)
+            sleep(0.25)
          
         print("At Home now ready")
         current = target_position(0,0,0)
