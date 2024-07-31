@@ -20,7 +20,8 @@ x_axis_limit    = 17
 z_axis_limit    = 27
 y_axis_limit    = 22
 
-Green_led       = 23
+Green_led_dynamic = 23
+Green_led_static = 24
 
 
 gpio.setmode(gpio.BCM)
@@ -58,6 +59,7 @@ move_out_steps_max_Y = 20
 
 Calibration_File_Name_start = "CalFile"
 Calibration_File_Name_suffix = "cal"
+CurrentCalibration_File_Name =  "CurrentCalib.cal"
 
 class target_position:
     X = 0
@@ -86,7 +88,18 @@ class target_position:
             return math.atan(other_position.Z-Z/other_position.X-X)
         else:
             return -999
-            
+ 
+class Led_time_state:
+    led_number:int = 0 # led 1 = static, led 2 = dynamic
+    led_state:int = 0   # off = 0 on = 1
+    timeSliceNumber:int = 0 # number of steps for start of sequence
+    
+    def __init__ (self,led_no,state,sliceNumber):
+        self.led_number = led_number
+        self.led_state = state
+        self.timeSliceNumber = sliceNumber
+        
+        
 
 def move_to_position(new_position, current_position, step_time):
     delta_x = new_position.X - current_position.X
@@ -140,6 +153,21 @@ def CreateFileName(x: datetime):
     result = f"{Calibration_File_Name_start}{year}{month}{day}T{hr}{mins}{sec}.{Calibration_File_Name_suffix}"
     return result
     
+def Led_Squencer():
+    led_time_states: led_time_state = []
+    led1 = Green_led_static # saccad rod led
+    led2 = Green_led_dynamic # dynamic led
+    seq_time = 12.0 #total saccad time
+    time_slice = 0.1 #time increments where all changes occur.
+    steps = math.ceil(seq_time/time_slice)
+    # fill the led_times_states list here
+     
+    for t in range(steps):
+         
+    
+    
+    return 0
+
 try:
     while cycle== True:
         print("Home Axis")
@@ -434,20 +462,27 @@ try:
             print("Writing Calibration data")
             t = datetime.datetime.now()
             FileName = CreateFileName(t)
-            calibrationFile = open(FileName,"w")    
+            calibrationFile = open(FileName,"w")
+            currentCalFile = open(CurrentCalibration_File_Name,"w")
             header = "DateTime,X_Max,Y_Max,Z_Max\n"
             calibrationFile.write(header)
+            currentCalFile.write(header) # used to allow calibration to be re-used
             CalLine = f"{t},{x_max},{y_max},{z_max}\n"
             calibrationFile.write(CalLine)
+            currentCalFile.write(CalLine)
             calibrationFile.close()
+            currentCalFile.close()
         else:
             print("Using default calibration data")
         
-        if x_max > 900:
-            x_max = 1260
+        if x_max < 900:
+            x_max = 1250
         
-        if z_max > 1900:
-            z_max = 2824
+        if z_max < 1900:
+            z_max = 2800
+            
+        if y_max < 1200:
+            y_max = 1530
         
         for b in range(2 ):
             gpio.output(Green_led,gpio.HIGH) # Green led on
