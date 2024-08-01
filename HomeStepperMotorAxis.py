@@ -1,5 +1,7 @@
 from time import sleep
 import time
+
+from networkx import gaussian_random_partition_graph
 import RPi.GPIO as gpio
 import math
 import csv
@@ -167,7 +169,7 @@ def CreateFileName(x: datetime):
     result = f"{Calibration_File_Name_start}{year}{month}{day}T{hr}{mins}{sec}.{Calibration_File_Name_suffix}"
     return result
     
-def Led_Squencer():
+def Led_Squencer(blink, dwell, gap):
     led_time_states: led_time_state = []
     led1 = Green_led_static # saccad rod led
     led2 = Green_led_dynamic # dynamic led
@@ -176,8 +178,33 @@ def Led_Squencer():
     steps = math.ceil(seq_time/time_slice)
     # fill the led_times_states list here
      
-    for t in range(steps):
-        return 0
+    # algorithm for fixation and gap time, gap time is negative for an overlap and positive for a gap 
+    # blink offsets the start time    
+    # fixation from Saccade_Instruction class: dwell
+    # gap from Saccade_Instruction class: gap   
+    sequence = []
+    sequence[0] = blink/4 * 0 * time_slice                    #led1 on
+    sequence[1] = blink/4 * 1 * time_slice                    #led1 off
+    sequence[2] = blink/4 * 2 * time_slice                    #led1 on
+    sequence[3] = blink/4 * 3 * time_slice                    #led1 off
+    sequence[4] = blink * time_slice                          #led1 on
+    sequence[5] = (dwell + gap + blink) * time_slice          #led2 on
+    sequence[6] = (dwell + blink) * time_slice                #led1 off
+    sequence[7] = (2*dwell + 2*gap + blink) * time_slice      #led1 on
+    sequence[8] = (3*dwell + gap + blink) * time_slice        #led2 off
+    sequence[9] = (3*dwell + 2*gap + blink) * time_slice      #led1 off 
+    
+    for t in range(steps): # time increments is t
+        if t == sequence[0] or t == sequence[2] or t == sequence[4] or t == sequence[7]:
+            gpio.output(led1,gpio.HIGH)
+        elif t == sequence[1] or t == sequence[3] or t == sequence[6] or t == sequence[9]:
+            gpio.output(led1,gpio.LOW)
+        elif t == sequence[5]:
+            gpio.output(led2,gpio.HIGH)
+        elif t == sequence[8]:
+            gpio.output(led2,gpio.LOW)
+    
+    return 0
 
 try:
     while cycle== True:
