@@ -38,7 +38,8 @@ gpio.setup(x_axis_limit, gpio.IN)
 gpio.setup(z_axis_limit, gpio.IN)
 gpio.setup(y_axis_limit, gpio.IN)
 
-gpio.setup(Green_led, gpio.OUT)
+gpio.setup(Green_led_dynamic, gpio.OUT)
+gpio.setup(Green_led_static, gpio.OUT)
 
 gpio.output(direction_pin,cw_direction) # left motor (A)
 gpio.output(direction_pin2,ccw_direction) # right motor (b)
@@ -142,6 +143,19 @@ def move_to_position(new_position, current_position, step_time):
             if x < b_steps:
                 gpio.output(pulse_pin2,gpio.LOW)
             sleep(step_time/2)
+    # workout Y direction
+    if delta_y<0:
+        gpio.output(direction_pinY,cw_direction)
+    else:
+        gpio.output(direction_pinY,ccw_direction)
+    # now do Y steps/movement
+    for x in range(abs(delta_y)):
+        if gpio.input(y_axis_limit) == 0:
+            gpio. output(pulse_pinY, gpio.HIGH)
+            sleep(step_time)
+            gpio.output(pulse_pinY, gpio.LOW)
+            sleep(step_time/2)
+        
             
 def CreateFileName(x: datetime):
     year  = x.year
@@ -163,10 +177,7 @@ def Led_Squencer():
     # fill the led_times_states list here
      
     for t in range(steps):
-         
-    
-    
-    return 0
+        return 0
 
 try:
     while cycle== True:
@@ -185,7 +196,7 @@ try:
                 sleep(.0005)
             sleep(1)
             
-        gpio.output(Green_led,gpio.HIGH) # Green led on
+        gpio.output(Green_led_static,gpio.HIGH) # Green led on
         
         while(gpio.input(x_axis_limit) == 0):
             gpio.output(pulse_pin2,gpio.HIGH)
@@ -195,7 +206,7 @@ try:
             gpio.output(pulse_pin,gpio.LOW)         
             sleep(.0005)
         print('X axis is at X Home position')
-        gpio.output(Green_led,gpio.LOW) # Green led off
+        gpio.output(Green_led_static,gpio.LOW) # Green led off
         sleep(1)
         print('X axis move to end posn to determine max steps')
         gpio.output(direction_pin2,ccw_direction)
@@ -212,7 +223,7 @@ try:
                 sleep(.0005)
             sleep(1)
             
-        gpio.output(Green_led,gpio.HIGH) # Green led on    
+        gpio.output(Green_led_static,gpio.HIGH) # Green led on    
         while(gpio.input(x_axis_limit) == 0):
             gpio.output(pulse_pin2,gpio.HIGH)
             gpio.output(pulse_pin,gpio.HIGH)
@@ -224,7 +235,7 @@ try:
             
         print(f"Steps in X axis is {x_step_count}")
         x_max=x_step_count
-        gpio.output(Green_led,gpio.LOW) # Green led off
+        gpio.output(Green_led_static,gpio.LOW) # Green led off
         sleep(1)
         
         gpio.output(direction_pin,cw_direction)
@@ -253,7 +264,7 @@ try:
                 sleep(.0005)
             sleep(1)
         
-        gpio.output(Green_led,gpio.HIGH) # Green led on
+        gpio.output(Green_led_static,gpio.HIGH) # Green led on
         print("Move to Z axis home")
         while(gpio.input(z_axis_limit)==0):
             gpio.output(pulse_pin,gpio.HIGH)
@@ -265,7 +276,7 @@ try:
         
         print('Z axis in home position')
         sleep(1)
-        gpio.output(Green_led,gpio.LOW) # Green led off
+        gpio.output(Green_led_static,gpio.LOW) # Green led off
         
         gpio.output(direction_pin,cw_direction) # away from motors
         gpio.output(direction_pin2,ccw_direction)
@@ -281,7 +292,7 @@ try:
             sleep(1)
             
         print("Move to Z axis end to count number of steps")
-        gpio.output(Green_led,gpio.HIGH) # Green led on
+        gpio.output(Green_led_static,gpio.HIGH) # Green led on
         while(gpio.input(z_axis_limit)==0):
             gpio.output(pulse_pin,gpio.HIGH)
             gpio.output(pulse_pin2,gpio.HIGH)
@@ -292,7 +303,7 @@ try:
             z_step_count+=1
         
         print(f"(Step in Z axis is {z_step_count}")
-        gpio.output(Green_led,gpio.LOW) # Green led off
+        gpio.output(Green_led_static,gpio.LOW) # Green led off
         z_max = z_step_count
         sleep(1)
         
@@ -485,9 +496,9 @@ try:
             y_max = 1530
         
         for b in range(2 ):
-            gpio.output(Green_led,gpio.HIGH) # Green led on
+            gpio.output(Green_led_static,gpio.HIGH) # Green led on
             sleep(0.25)
-            gpio.output(Green_led,gpio.LOW) # Green led off
+            gpio.output(Green_led_static,gpio.LOW) # Green led off
             sleep(0.25)
          
         print("At Home now ready")
@@ -500,12 +511,17 @@ try:
         current = newposition
         print(current.X, current.Z)
         start = time.time()
-        nextposition=target_position(math.floor(x_max/2),0,math.floor(z_max/2))
+        nextposition=target_position(math.floor(x_max/2),0,math.floor(z_max*0.5))
         move_to_position(nextposition,current,0.001)
         end = time.time()
         print(f"z move time {end - start}")
         current = nextposition
         print(current.X, current.Z)
+        nextposition=target_position(math.floor(x_max/2),math.floor(y_max*0.5),math.floor(z_max*0.5))
+        move_to_position(nextposition,current,0.001)
+        current = nextposition
+        exit()
+    
         
         with open(csv_file) as file:
             heading = next(file)
