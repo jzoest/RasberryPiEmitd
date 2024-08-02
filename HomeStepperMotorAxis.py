@@ -1,7 +1,7 @@
 from time import sleep
 import time
 
-from networkx import gaussian_random_partition_graph
+#from networkx import gaussian_random_partition_graph
 import RPi.GPIO as gpio
 import math
 import csv
@@ -173,7 +173,7 @@ def Led_Squencer(blink, dwell, gap):
     led_time_states: led_time_state = []
     led1 = Green_led_static # saccad rod led
     led2 = Green_led_dynamic # dynamic led
-    seq_time = 12.0 #total saccad time
+    seq_time = 12.5 #total saccad time
     time_slice = 0.1 #time increments where all changes occur.
     steps = math.ceil(seq_time/time_slice)
     # fill the led_times_states list here
@@ -183,27 +183,36 @@ def Led_Squencer(blink, dwell, gap):
     # fixation from Saccade_Instruction class: dwell
     # gap from Saccade_Instruction class: gap   
     sequence = []
-    sequence[0] = blink/4 * 0 * time_slice                    #led1 on
-    sequence[1] = blink/4 * 1 * time_slice                    #led1 off
-    sequence[2] = blink/4 * 2 * time_slice                    #led1 on
-    sequence[3] = blink/4 * 3 * time_slice                    #led1 off
-    sequence[4] = blink * time_slice                          #led1 on
-    sequence[5] = (dwell + gap + blink) * time_slice          #led2 on
-    sequence[6] = (dwell + blink) * time_slice                #led1 off
-    sequence[7] = (2*dwell + 2*gap + blink) * time_slice      #led1 on
-    sequence[8] = (3*dwell + gap + blink) * time_slice        #led2 off
-    sequence[9] = (3*dwell + 2*gap + blink) * time_slice      #led1 off 
+    sequence.append( int(blink/4 * 0 / time_slice))                    #led1 on 0
+    sequence.append( int(blink/4 * 1 / time_slice ))                    #led1 off 2
+    sequence.append( int(blink/4 * 2 / time_slice))                    #led1 on 4
+    sequence.append( int(blink/4 * 3 / time_slice))                    #led1 off 6
+    sequence.append( int(blink / time_slice))                          #led1 on 8
+    sequence.append(int((dwell + gap + blink) / time_slice ))         #led2 on 46
+    sequence.append( int(((dwell + blink) / time_slice)))                #led1 off 48
+    sequence.append(int((2*dwell + 2*gap + blink) / time_slice))      #led1 on 84
+    sequence.append(int((2*dwell + gap + blink) / time_slice))        #led2 off 86
+    sequence.append(int((3*dwell + 2*gap + blink) / time_slice))      #led1 off 124
+    print(sequence)
     
     for t in range(steps): # time increments is t
         if t == sequence[0] or t == sequence[2] or t == sequence[4] or t == sequence[7]:
             gpio.output(led1,gpio.HIGH)
+            print(f"led1 on step {t}")
         elif t == sequence[1] or t == sequence[3] or t == sequence[6] or t == sequence[9]:
             gpio.output(led1,gpio.LOW)
+            tstamp = time.time()
+            ts_string = CreateTimeStamp(tstamp)
+            print(f"led1 off step {t} {ts_string}")
         elif t == sequence[5]:
             gpio.output(led2,gpio.HIGH)
+            print(f"led2 on step {t}")
         elif t == sequence[8]:
             gpio.output(led2,gpio.LOW)
-    
+            tstamp = time.time()
+            ts_string = CreateTimeStamp(tstamp)
+            print(f"led2 off step {t} {ts_string}")
+        sleep(0.1)
     return 0
 
 try:
@@ -523,9 +532,9 @@ try:
             y_max = 1530
         
         for b in range(2 ):
-            gpio.output(Green_led_static,gpio.HIGH) # Green led on
+            gpio.output(Green_led_dynamic,gpio.HIGH) # Green led on
             sleep(0.25)
-            gpio.output(Green_led_static,gpio.LOW) # Green led off
+            gpio.output(Green_led_dynamic,gpio.LOW) # Green led off
             sleep(0.25)
          
         print("At Home now ready")
@@ -547,6 +556,8 @@ try:
         nextposition=target_position(math.floor(x_max/2),math.floor(y_max*0.5),math.floor(z_max*0.5))
         move_to_position(nextposition,current,0.001)
         current = nextposition
+        
+        Led_Squencer(0.8,4,-0.2)
         exit()
     
         
