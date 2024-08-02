@@ -202,7 +202,7 @@ def Led_Squencer(blink, dwell, gap):
         elif t == sequence[1] or t == sequence[3] or t == sequence[6] or t == sequence[9]:
             gpio.output(led1,gpio.LOW)
             tstamp = time.time()
-            ts_string = CreateTimeStamp(tstamp)
+            ts_string = str(tstamp)
             print(f"led1 off step {t} {ts_string}")
         elif t == sequence[5]:
             gpio.output(led2,gpio.HIGH)
@@ -210,7 +210,7 @@ def Led_Squencer(blink, dwell, gap):
         elif t == sequence[8]:
             gpio.output(led2,gpio.LOW)
             tstamp = time.time()
-            ts_string = CreateTimeStamp(tstamp)
+            ts_string = str(tstamp)
             print(f"led2 off step {t} {ts_string}")
         sleep(0.1)
     return 0
