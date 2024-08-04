@@ -182,6 +182,16 @@ try:
     logFileName = CreateLogFileName(logstart)
     log = open(logFileName,"w")
     print(f"Starting Calibration at {logstart}")
+    confirm = False
+    while not confirm:
+        response = input("Please confirm Saccada Rod is removed from the Robot (Y/N)")
+        log.write(f"Comfirmed Saccada Rod Removed {response}\n")
+        if(response.startswith("y") or response.startswith("Y")):
+            confirm = True
+        else:
+           print("Invalid response please enter (Y/N) after removing the saccada rod from the Robot")
+           log.write("Invalid response recieved ask again\n")
+    
     while cycle== True:
         log.write("Home Axis\n")
         log.write('X axis move to start posn\n')

@@ -62,8 +62,11 @@ move_out_steps_max_Y = 20
 Calibration_File_Name_start = "CalFile"
 Calibration_File_Name_suffix = "cal"
 CurrentCalibration_File_Name =  "CurrentCalib.cal"
+Log_File_Path   = ".//log"
 Input_File_Path = ".//input_files"
-
+Output_File_Path = ".//output_files"
+Data_File_Path  = ".//data_files"
+ 
 class target_position:
     X = 0
     Y = 0
@@ -178,8 +181,10 @@ def CreateLogFileName(x: datetime):
     sec   = x.second
     result = f"Run_Trials_Log_{year}{month}{day}T{hr}{mins}{sec}.log"
     return result
-    
-def Led_Squencer(blink, dwell, gap):
+
+def CreateDataFileName(x: datetime)
+
+def Led_Squencer(blink : int, dwell : int, gap : int, current_position : target_position):
     led_time_states: led_time_state = []
     led1 = Green_led_static # saccad rod led
     led2 = Green_led_dynamic # dynamic led
@@ -224,6 +229,14 @@ def Led_Squencer(blink, dwell, gap):
             print(f"led2 off step {t} {ts_string}")
         sleep(0.1)
     return 0
+
+def Log_Data(currentPosition, led1, led1_state, led1_colour, saccade_position, led2, led2_state, led2_colour):
+    
+    return 0
+    
+    
+    
+
 
 try:
     logstart = datetime.datetime.now()
@@ -369,8 +382,10 @@ try:
         else:
             log.write("calibration is invalid one or more axis are not calibrated correctly\n")
             log.write("Please re-calibrate\n")
+            log.write("Exiting program now\n")
             print("calibration is invalid one or more axis are not calibrated correctly")
             print("Please re-calibrate")
+            print("Exiting program now")
             log.close()
             exit(-1)
         for b in range(4):
