@@ -7,6 +7,7 @@ import csv
 import datetime
 
 import os
+import shutil
 
 direction_pin   = 21
 pulse_pin       = 20
@@ -182,9 +183,26 @@ def CreateLogFileName(x: datetime):
     result = f"Run_Trials_Log_{year}{month}{day}T{hr}{mins}{sec}.log"
     return result
 
-def CreateDataFileName(x: datetime)
+def CreateDataFileName(x: datetime, block, particpant,):
+    year  = x.year
+    month = x.month
+    day   = x.day
+    hr    = x.hour
+    mins  = x.minute
+    sec   = x.second
+    result = f"{Data_File_Path}//DataReal_{particpant}_{block}{year}{month}{day}T{hr}{mins}{sec}.csv"
+    return result
 
-def Led_Squencer(blink : int, dwell : int, gap : int, current_position : target_position):
+def CreateDataFile(dataFileName:str):
+    #("trial_num,blockNum,participant,visualAngle,viewingDistance,static_x,static_y,static_z,dynamic_x,dynamic_y,dynamic_z,led1on1,led2on,led1off1,led1on2,led2off,led1off2,");
+    header = "trial_num,blockNum,participant,visualAngle,viewingDistance,static_x,static_y,static_z,dynamic_x,dynamic_y,dynamic_z,led1on1,led2on,led1off1,led1on2,led2off,led1off2,\n"
+    datafile = open(dataFileName,"w")
+    datafile.write(header)
+    return datafile
+
+
+
+def Led_Squencer(blink : int, dwell : int, gap : int, current_position : target_position, datafile,log,trial,block):
     led_time_states: led_time_state = []
     led1 = Green_led_static # saccad rod led
     led2 = Green_led_dynamic # dynamic led
@@ -208,31 +226,87 @@ def Led_Squencer(blink : int, dwell : int, gap : int, current_position : target_
     sequence.append(int((2*dwell + 2*gap + blink) / time_slice))      #led1 on 84
     sequence.append(int((2*dwell + gap + blink) / time_slice))        #led2 off 86
     sequence.append(int((3*dwell + 2*gap + blink) / time_slice))      #led1 off 124
-    print(sequence)
+    ts = [] # list of timestamps from this saccade trial
     
     for t in range(steps): # time increments is t
-        if t == sequence[0] or t == sequence[2] or t == sequence[4] or t == sequence[7]:
+        if t == sequence[0] or t == sequence[2]:
             gpio.output(led1,gpio.HIGH)
-            print(f"led1 on step {t}")
-        elif t == sequence[1] or t == sequence[3] or t == sequence[6] or t == sequence[9]:
+            log.write(f"led1 on step {t}\n")
+
+        elif t == sequence[1] or t == sequence[3]:
+            gpio.output(led1,gpio.LOW)
+            log.write(f"led1 off step {t}\n")
+            
+        elif t == sequence[4]:
+            gpio.output(led1,gpio.HIGH)
+            tstamp = time.time()
+            ts_string = str(tstamp)
+            ts.append(ts_string)
+            log.write(f"led1on1 on step {t}\n")
+            
+        elif t == sequence[5]:
+            gpio.output(led2,gpio.HIGH)
+            tstamp = time.time()
+            ts_string = str(tstamp)
+            ts.append(ts_string)
+            log.write(f"led2on1 step {t}\n")
+        
+        elif t == sequence[6]:
             gpio.output(led1,gpio.LOW)
             tstamp = time.time()
             ts_string = str(tstamp)
-            print(f"led1 off step {t} {ts_string}")
-        elif t == sequence[5]:
-            gpio.output(led2,gpio.HIGH)
-            print(f"led2 on step {t}")
+            ts.append(ts_string)
+            log.write(f"led1off1 step {t}\n")
+            
+        elif t == sequence[7]:
+            gpio.output(led1,gpio.HIGH)
+            tstamp = time.time()
+            ts_string = str(tstamp)
+            ts.append(ts_string)
+            log.write(f"led1on2 step {t}\n")
+            
         elif t == sequence[8]:
             gpio.output(led2,gpio.LOW)
             tstamp = time.time()
             ts_string = str(tstamp)
-            print(f"led2 off step {t} {ts_string}")
+            ts.append(ts_string)
+            log.write(f"led2off step {t}\n")
+            
+        elif t == sequence[9]:
+            gpio.output(led1,gpio.LOW)
+            tstamp = time.time()
+            ts_string = str(tstamp)
+            ts.append(ts_string)
+            log.write(f"led1off2 step {t}\n")
+            
         sleep(0.1)
+    
+    data_line = Format_Log_Data(current_position,saccade_position,ts,trial,block)
+    datafile.write(data_line)
     return 0
 
-def Log_Data(currentPosition, led1, led1_state, led1_colour, saccade_position, led2, led2_state, led2_colour):
-    
-    return 0
+#trial_num,blockNum,participant,visualAngle,viewingDistance,static_x,static_y,static_z,dynamic_x,dynamic_y,dynamic_z,led1on1,led2on,led1off1,led1on2,led2off,led1off2
+# change to experiment code 
+def Format_Log_Data_Line(currentPosition, saccade_position,timestamplist,trialNo,blockNo,participant,visualangle,viewingDistance):
+    trial_num = trialNo
+    blockNum = blockNo # change to Experiment code eg. RSAC[F-B][1-3] Real Saccade Front/Back Position 1|2|3 
+    participant =""
+    visualAngle = 0
+    viewingDistance = 0
+    static_x  = saccade.X
+    static_y  = saccade.Y
+    static_z  = saccade.Z
+    dynamic_x = currentPosition.X
+    dynamic_y = currentPosition.Y
+    dynamic_z = currentPosition.Z
+    led1on1  = timestamplist[0]
+    led2on   = timestamplist[1]
+    led1off1 = timestamplist[2]
+    led1on2  = timestamplist[3]
+    led2off  = timestamplist[4]
+    led1off2 = timestamplist[5]
+    result = f"{trial_num},{blockNum},{participant},{visualAngle},{viewingDistance},{static_x},{static_y},{static_z},{dynamic_x},{dynamic_y},{dynamic_z},{led1on1},{led2on},{led1off1},{led1on2},{led2off},{led1off2},\n"
+    return result
     
     
     
@@ -243,6 +317,16 @@ try:
     logFileName = CreateLogFileName(logstart)
     log = open(logFileName,"w")
     print(f"Running Trials at {logstart}")
+    confirm = False
+    while not confirm:
+        response = input("Please confirm Saccade Rod is removed from the Robot (Y/N)")
+        log.write(f"Comfirmed Saccade Rod Removed {response}\n")
+        if(response.startswith("y") or response.startswith("Y")):
+            confirm = True
+        else:
+           print("Invalid response please enter (Y/N) after removing the saccada rod from the Robot")
+           log.write("Invalid response recieved ask again\n")
+    
     while cycle== True:
         log.write("Home Axis\n")
         log.write('X axis move to start posn\n')
@@ -416,6 +500,16 @@ try:
         log.write(f" Postion is X = {current.X} Y= {current.Y} = {current.Z}\n")
         log.flush()
         os.fsync(log)
+        confirm2 = False
+        while not confirm2:
+            response = input("Please insert the Saccade rod in the desired position(Y/N)")
+            log.write(f"Comfirmed Saccade rod is inserted {response}\n")
+            if(response.startswith("y") or response.startswith("Y")):
+                confirm2 = True
+        else:
+           print("Invalid response please enter (Y/N) after inserting the Saccade rod in the Robot")
+           log.write("Invalid response recieved ask again\n")
+        #get all the input file name 
         my_file_list = []
         for file in os.listdir(Input_File_Path):
             if file.endswith(".csv"):
@@ -426,23 +520,35 @@ try:
         os.fsync(log)
         
         
-        for file in my_file_list:
-            print(file)
-            with open(csv_file) as file:
+        for my_file in my_file_list:
+            with open(my_file) as file:
                 heading = next(file)
                 reader = csv.reader(file)
                 for row in reader:
-                    print(current.X, current.Z)
+                    log.write(f"Current position {current.X}, {current.Z}\n")
                     if row[0]!="end":
+                        #DoTo: read input csv paramters
                         x_position = math.floor(float(row[4])*x_max) # wrong way for 0.4 -- went left, should have been right
                         z_position = math.floor(float(row[5])*z_max) # correct way for 0.6 -- went back
-                        log.write(f" Postion is X = {current.X} Y= {current.Y} = {current.Z}\n")
+                        #ToDo y_position 
+                        log.write(f" Position is X = {current.X} Y= {current.Y} = {current.Z}\n")
                         wait_time = int(row[7])/1000
                         nextposition2 = target_position(x_position,0,z_position)
                         move_to_position(current,nextposition2,0.001)
                         current=nextposition2
-                        # To do add led sequence stuff
+                        #def Led_Squencer(blink : int, dwell : int, gap : int, current_position : target_position)
+                        blink = 800
+                        dwell = 4000
+                        gap = -200
+                        log.write(f"blink: {blink} dwell: {dwell} gap {gap}\n")
+                        Led_Squencer(blink,dwell,gap, current, datafile,log)
                         sleep(wait_time)
+                        
+                #To Do:move input file to output
+                #shutil.move("path/to/current/file.foo", "path/to/new/destination/for/file.foo")
+                #ToDo: Datafile flush to disk
+                #ToDo: Copy file to another location (made it a hidden folder)
+                #ToDo: prompt to continue here
                 
         print("Done csv commands")
         log.close()
