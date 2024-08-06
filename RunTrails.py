@@ -183,14 +183,14 @@ def CreateLogFileName(x: datetime):
     result = f"Run_Trials_Log_{year}{month}{day}T{hr}{mins}{sec}.log"
     return result
 
-def CreateDataFileName(x: datetime, block, particpant,):
+def CreateDataFileName(x: datetime, experimentCode, particpant,):
     year  = x.year
     month = x.month
     day   = x.day
     hr    = x.hour
     mins  = x.minute
     sec   = x.second
-    result = f"{Data_File_Path}//DataReal_{particpant}_{block}{year}{month}{day}T{hr}{mins}{sec}.csv"
+    result = f"{Data_File_Path}//RealData_{experimentCode}_{particpant}_{year}{month}{day}T{hr}{mins}{sec}.csv"
     return result
 
 def CreateDataFile(dataFileName:str):
@@ -528,12 +528,29 @@ try:
                     log.write(f"Current position {current.X}, {current.Z}\n")
                     if row[0]!="end":
                         #DoTo: read input csv paramters
-                        x_position = math.floor(float(row[4])*x_max) # wrong way for 0.4 -- went left, should have been right
-                        z_position = math.floor(float(row[5])*z_max) # correct way for 0.6 -- went back
+                        expCode = row[0]
+                        trialNum = row[1]
+                        partCode = row[2]
+                        visualAngle = row[3]
+                        viewingDistance = row[4]
+                        staticX = row[5]
+                        staticY = row[6]
+                        staticZ = row[7]
+                        dynamicX = row[8]
+                        dynamicY = row[9]
+                        dyanmicZ = row[10]
+                        staticCol = row[11]
+                        dynamicCol = row[12]
+                        blink = row[13]
+                        dwell = row[14]
+                        gap = row[15]
+                        x_position = math.floor(float(row[8])*x_max) # wrong way for 0.4 -- went left, should have been right
+                        y_position = math.floor(float(row[9])*y_max)
+                        z_position = math.floor(float(row[10])*z_max) # correct way for 0.6 -- went back
                         #ToDo y_position 
                         log.write(f" Position is X = {current.X} Y= {current.Y} = {current.Z}\n")
                         wait_time = int(row[7])/1000
-                        nextposition2 = target_position(x_position,0,z_position)
+                        nextposition2 = target_position(x_position,y_position,z_position)
                         move_to_position(current,nextposition2,0.001)
                         current=nextposition2
                         #def Led_Squencer(blink : int, dwell : int, gap : int, current_position : target_position)
@@ -546,6 +563,8 @@ try:
                         
                 #To Do:move input file to output
                 #shutil.move("path/to/current/file.foo", "path/to/new/destination/for/file.foo")
+                CreateDataFileName(datetime, expCode, partCode)   
+                CreateDataFile()
                 #ToDo: Datafile flush to disk
                 #ToDo: Copy file to another location (made it a hidden folder)
                 #ToDo: prompt to continue here
