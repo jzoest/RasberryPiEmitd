@@ -562,7 +562,7 @@ try:
            log.write("Invalid response recieved ask again\n")
         #get all the input file name 
         my_file_list = []
-        for file in os.listdir(Input_File_Path):
+        for file in os.listdir(Input_File_Path): # probably a bug here
             if file.endswith(".csv"):
                my_file_list.append(file)
                log.write(f"Adding file {file} to list of files for trial\n")
