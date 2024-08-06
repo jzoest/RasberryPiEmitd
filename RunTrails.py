@@ -8,6 +8,7 @@ import datetime
 
 import os
 import shutil
+import socket
 
 direction_pin   = 21
 pulse_pin       = 20
@@ -60,13 +61,20 @@ move_out_steps_max_X = 20
 move_out_steps_max_Z = 20
 move_out_steps_max_Y = 20
 
-Calibration_File_Name_start = "CalFile"
+IP_address = "127.0.0.1"
+
+Calibration_File_Name_start  = "CalFile"
 Calibration_File_Name_suffix = "cal"
-CurrentCalibration_File_Name =  "CurrentCalib.cal"
-Log_File_Path   = ".//log"
-Input_File_Path = ".//input_files"
+CurrentCalibration_File_Name = "CurrentCalib.cal"
+Log_File_Path    = ".//log"
+Input_File_Path  = ".//input_files"
 Output_File_Path = ".//output_files"
-Data_File_Path  = ".//data_files"
+Data_File_Path   = ".//data_files"
+Backup_File_Path = ".//.backup"
+
+Total_Number_Of_Files = -1
+Current_Block_Number = -1
+
  
 class target_position:
     X = 0
@@ -183,26 +191,44 @@ def CreateLogFileName(x: datetime):
     result = f"Run_Trials_Log_{year}{month}{day}T{hr}{mins}{sec}.log"
     return result
 
-def CreateDataFileName(x: datetime, experimentCode, particpant,):
+def CreateDataFileName(x: datetime, experimentCode, particpant):
     year  = x.year
     month = x.month
     day   = x.day
     hr    = x.hour
     mins  = x.minute
     sec   = x.second
-    result = f"{Data_File_Path}//RealData_{experimentCode}_{particpant}_{year}{month}{day}T{hr}{mins}{sec}.csv"
+    result = f"{Data_File_Path}//RealData_{year}{month}{day}T{hr}{mins}{sec}_{experimentCode}_{particpant}.csv"
+    return result
+
+def CreateBackupFileName(x: datetime, experimentCode, particpant):
+    year  = x.year
+    month = x.month
+    day   = x.day
+    hr    = x.hour
+    mins  = x.minute
+    sec   = x.second
+    result = f"{Backup_File_Path}//RealData_{year}{month}{day}T{hr}{mins}{sec}_{experimentCode}_{particpant}.csv"
+    return result
+
+def CreateInputFileName(Input_File_Path, FileName):
+    result= f"{Input_File_Path}//{FileName}"
+    return result
+
+def CreateOutputFileName(Output_File_Path,FileName):
+    result= f"{Output_File_Path}//{FileName}"
     return result
 
 def CreateDataFile(dataFileName:str):
     #("trial_num,blockNum,participant,visualAngle,viewingDistance,static_x,static_y,static_z,dynamic_x,dynamic_y,dynamic_z,led1on1,led2on,led1off1,led1on2,led2off,led1off2,");
-    header = "trial_num,blockNum,participant,visualAngle,viewingDistance,static_x,static_y,static_z,dynamic_x,dynamic_y,dynamic_z,led1on1,led2on,led1off1,led1on2,led2off,led1off2,\n"
+    header = "experimentCode,trial_num,block_num,participant,visualAngle,viewingDistance,static_x,static_y,static_z,dynamic_x,dynamic_y,dynamic_z,led1on1,led2on,led1off1,led1on2,led2off,led1off2,\n"
     datafile = open(dataFileName,"w")
     datafile.write(header)
     return datafile
 
 
 
-def Led_Squencer(blink : int, dwell : int, gap : int, current_position : target_position, datafile,log,trial,block):
+def Led_Sequencer(blink : int, dwell : int, gap : int,saccade_position : target_position, current_position : target_position, datafile,log,experimentCode,trial,block,participant,visualangle,viewingDistance):
     led_time_states: led_time_state = []
     led1 = Green_led_static # saccad rod led
     led2 = Green_led_dynamic # dynamic led
@@ -281,21 +307,20 @@ def Led_Squencer(blink : int, dwell : int, gap : int, current_position : target_
             
         sleep(0.1)
     
-    data_line = Format_Log_Data(current_position,saccade_position,ts,trial,block)
+    data_line = Format_Log_Data(current_position,saccade_position,ts,experimentCode,trial,block,participant,visualangle,viewingDistance)
     datafile.write(data_line)
+    datafile.flush()
+    os.fsync(datafile)
+    
     return 0
 
 #trial_num,blockNum,participant,visualAngle,viewingDistance,static_x,static_y,static_z,dynamic_x,dynamic_y,dynamic_z,led1on1,led2on,led1off1,led1on2,led2off,led1off2
 # change to experiment code 
-def Format_Log_Data_Line(currentPosition, saccade_position,timestamplist,trialNo,blockNo,participant,visualangle,viewingDistance):
-    trial_num = trialNo
-    blockNum = blockNo # change to Experiment code eg. RSAC[F-B][1-3] Real Saccade Front/Back Position 1|2|3 
-    participant =""
-    visualAngle = 0
-    viewingDistance = 0
-    static_x  = saccade.X
-    static_y  = saccade.Y
-    static_z  = saccade.Z
+def Format_Log_Data_Line(currentPosition, saccade_position,timestamplist,experimentCode,trialNo,blockNo,Participant,Visualangle,ViewingDistance):
+    # change to Experiment code eg. RSAC[F-B][1-3] Real Saccade Front/Back Position 1|2|3 
+    static_x  = saccade_position.X
+    static_y  = saccade_position.Y
+    static_z  = saccade_position.Z
     dynamic_x = currentPosition.X
     dynamic_y = currentPosition.Y
     dynamic_z = currentPosition.Z
@@ -305,12 +330,38 @@ def Format_Log_Data_Line(currentPosition, saccade_position,timestamplist,trialNo
     led1on2  = timestamplist[3]
     led2off  = timestamplist[4]
     led1off2 = timestamplist[5]
-    result = f"{trial_num},{blockNum},{participant},{visualAngle},{viewingDistance},{static_x},{static_y},{static_z},{dynamic_x},{dynamic_y},{dynamic_z},{led1on1},{led2on},{led1off1},{led1on2},{led2off},{led1off2},\n"
+    result = f"{experimentCode},{trialNo},{blockNo},{Participant},{Visualangle},{ViewingDistance},{static_x},{static_y},{static_z},{dynamic_x},{dynamic_y},{dynamic_z},{led1on1},{led2on},{led1off1},{led1on2},{led2off},{led1off2},\n"
     return result
     
+def Signal_Unity_On():
+    try:
+        sock = socket.socket(socket.AF_INET, socket.socket_StREAM)
+        port = 56712
     
+        sock.connect(IP_address,port)
     
-
+        sock.sendall(b"ToggleOn")
+    
+        sock.close()
+    except:
+        print("exception occured trying to signal Unity")
+    finally:
+        return 0
+    
+def Signal_Unity_Off():
+    try:
+        sock = socket.socket(socket.AF_INET, socket.socket_StREAM)
+        port = 56712
+    
+        sock.connect(IP_address,port)
+    
+        sock.sendall(b"ToggleOff")
+    
+        sock.close()
+    except:
+        print("exception occured trying to signal Unity")
+    finally:
+        return 0
 
 try:
     logstart = datetime.datetime.now()
@@ -519,57 +570,104 @@ try:
         log.flush()
         os.fsync(log)
         
-        
+        Total_Number_Of_File = len(my_file_list)
+        current_file_number = 0
         for my_file in my_file_list:
+            current_file_number+=1
             with open(my_file) as file:
                 heading = next(file)
                 reader = csv.reader(file)
+                rowNumber = 0
                 for row in reader:
                     log.write(f"Current position {current.X}, {current.Z}\n")
                     if row[0]!="end":
                         #DoTo: read input csv paramters
                         expCode = row[0]
-                        trialNum = row[1]
-                        partCode = row[2]
-                        visualAngle = row[3]
-                        viewingDistance = row[4]
-                        staticX = row[5]
-                        staticY = row[6]
-                        staticZ = row[7]
-                        dynamicX = row[8]
-                        dynamicY = row[9]
-                        dyanmicZ = row[10]
-                        staticCol = row[11]
-                        dynamicCol = row[12]
-                        blink = row[13]
-                        dwell = row[14]
-                        gap = row[15]
-                        x_position = math.floor(float(row[8])*x_max) # wrong way for 0.4 -- went left, should have been right
-                        y_position = math.floor(float(row[9])*y_max)
-                        z_position = math.floor(float(row[10])*z_max) # correct way for 0.6 -- went back
-                        #ToDo y_position 
+                        blockNum = row[1]
+                        Current_Block_Number = blockNum
+                        trialNum = row[2]
+                        partCode = row[3]
+                        visualAngle = row[4]
+                        viewingDistance = row[5]
+                        staticX = row[6]
+                        staticY = row[7]
+                        staticZ = row[8]
+                        sx_position = math.floor(float(staticX)*x_max) 
+                        sy_position = math.floor(float(staticY)*y_max)
+                        sz_position = math.floor(float(staticZ)*z_max)
+                        staticPosition = target_position(sx_position,sy_position,sz_position)
+                        dynamicX = row[9]
+                        dynamicY = row[10]
+                        dyanmicZ = row[11]
+                        staticCol = row[12]
+                        dynamicCol = row[13]
+                        blink = row[14]
+                        dwell = row[15]
+                        gap = row[16]
+                        
+                        if rowNumber == 0:
+                            dateTime = datetime.datetime.now()
+                            DataFileName = CreateDataFileName(dateTime, expCode, partCode)
+                            BackupFileName = CreateBackupFileName(dateTime, expCode, partCode)
+                            datafile = CreateDataFile(DataFileName)
+                            
+                        x_position = math.floor(float(dynamicX)*x_max) # wrong way for 0.4 -- went left, should have been right
+                        y_position = math.floor(float(dynamicY)*y_max)
+                        z_position = math.floor(float(dynamicZ)*z_max) # correct way for 0.6 -- went back
+                        
                         log.write(f" Position is X = {current.X} Y= {current.Y} = {current.Z}\n")
-                        wait_time = int(row[7])/1000
+                        #wait_time = int(row[7])/1000
                         nextposition2 = target_position(x_position,y_position,z_position)
                         move_to_position(current,nextposition2,0.001)
                         current=nextposition2
-                        #def Led_Squencer(blink : int, dwell : int, gap : int, current_position : target_position)
-                        blink = 800
-                        dwell = 4000
-                        gap = -200
+                        #def Led_Squencer(blink : int, dwell : int, gap : int, current_position : target_position
                         log.write(f"blink: {blink} dwell: {dwell} gap {gap}\n")
-                        Led_Squencer(blink,dwell,gap, current, datafile,log)
+                        Signal_Unity_On()
+                        #blink : int, dwell : int, gap : int, static_position : target_position, current_position : target_position, datafile,log,experimentCode,trial,block,participant,visualangle,viewingDistance
+                        Led_Sequencer(blink,dwell,gap,staticPosition, current, datafile, log, expCode, trialNum, partCode, visualAngle, visualDistance)
+                        Signal_Unity_Off()
                         sleep(wait_time)
+                        rowNumber+=1
                         
-                #To Do:move input file to output
-                #shutil.move("path/to/current/file.foo", "path/to/new/destination/for/file.foo")
-                CreateDataFileName(datetime, expCode, partCode)   
-                CreateDataFile()
-                #ToDo: Datafile flush to disk
-                #ToDo: Copy file to another location (made it a hidden folder)
-                #ToDo: prompt to continue here
+                    else: #
+                        datafile.close()
+                        shutil.copy(DataFileName,BackupFileName)
                 
-        print("Done csv commands")
+                
+                inputfilename = CreateInputFileName(Input_File_Path,file)
+                outputfilename = CreateOutputFileName(Output_File_Path,file)
+                shutil.move(inputfilename,outputfilename)
+                log.flush()
+                os.fsync(log)
+
+                
+                #ToDo: prompt to continue here
+                print("Block complete ")
+                if Current_Block_Number == 3 and current_file_number ==3:
+                    res3 = False
+                    while res3 == False:
+                        response3 = input("Please re-position the saccade rod and enter (Y/N) to continue or (Q) to exit the experiment")
+                        log.write(f"Respone at block end {Current_Block_Number} file number {current_file_number} is {response3}\n")
+                        if response3 == 'y' or response3 == 'Y':
+                            res3=True
+                        elif response3 == 'q' or response3 == 'Q':
+                            log.close()
+                            exit()
+                elif Current_Block_Number == 3 and current_file_number == 6:
+                    print("Experiment is complete")
+                    continue
+                else:
+                    res4 = False
+                    while res4 == False:
+                        response4 = input("Please enter (Y/N) to continue or (Q) to exit the experiment")
+                        log.write(f"Respone at block end {Current_Block_Number} file number {current_file_number} is {response4}\n")
+                        if response4 == 'y' or response4 == 'Y':
+                            res4=True
+                        elif response4 == 'q' or response4 == 'Q':
+                            log.close()
+                            exit()
+                    
+                
         log.close()
         for b in range(10):
             gpio.output(Green_led,gpio.HIGH) # Green led on
@@ -579,7 +677,10 @@ try:
             
         cycle=False
         print(" cycle end")
+        gpio.cleanup()
         exit()
         
 except KeyboardInterrupt:
+    log.write("Keyboard interrupt occured\n")
+    log.close()
     gpio.cleanup()
