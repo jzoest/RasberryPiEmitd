@@ -1,7 +1,8 @@
 import os
 import socket
+from time import sleep
 
-IP_address = "169.254.49.8"
+IP_address = "192.168.137.1"
 # networking for syncing Tobii
 def Signal_Unity_On():
     try:
@@ -34,3 +35,19 @@ def Signal_Unity_Off():
         return 0
 
 Signal_Unity_On()
+
+print("Sending message")
+sleep(2)
+
+Signal_Unity_Off()
+print("Sending message")
+sleep(2)
+print("Sending message")
+Signal_Unity_On()
+print("Sending message")
+
+
+
+sleep(2)
+
+Signal_Unity_Off()
