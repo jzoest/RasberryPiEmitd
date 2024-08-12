@@ -30,6 +30,11 @@ y_axis_limit    = 22
 Green_led_dynamic = 23
 Green_led_static = 24
 
+#GPIO variables for Emergency Stop switch sense
+em_stop_sense_normal = 4 # emergency stop switch sensing high 2.4volts (logic 1 or high) when operation normally 24 power on when low emergency stop is pressed
+em_stop_sense_stopped = 5 # when high 2.4 volts (logic 1 or high) emergency stip button has been press and is activewhen low operation is normal ok
+
+
 # GPIO set up for output: motors
 gpio.setmode(gpio.BCM)
 gpio.setwarnings(False)
@@ -51,6 +56,11 @@ gpio.setup(Green_led_static, gpio.OUT)
 gpio.output(direction_pin,cw_direction) # left motor (A)
 gpio.output(direction_pin2,ccw_direction) # right motor (b)
 gpio.output(direction_pinY,cw_direction) # y axis motor
+
+#emergency stop switch sensing connection setup
+gpio.setup(em_stop_sense_normal,gpio.IN)
+gpio.setup(em_stop_sense_stopped, gpio.IN)
+
 
 ##########################################################################################
 # global variable initialisation
@@ -165,7 +175,7 @@ def move_to_position(new_position, current_position, step_time):
         gpio.output(direction_pin2,ccw_direction)
     
     for x in range(max_steps):
-        if(gpio.input(x_axis_limit) == 0 and gpio.input(z_axis_limit) == 0):
+        if(gpio.input(x_axis_limit) == 0 and gpio.input(z_axis_limit) == 0 and gpio.input(em_stop_sense_normal)==1 ):
             if x < a_steps:
                 gpio.output(pulse_pin,gpio.HIGH)
             if x < b_steps:
@@ -183,7 +193,7 @@ def move_to_position(new_position, current_position, step_time):
         gpio.output(direction_pinY,ccw_direction)
     # now do Y steps/movement
     for x in range(abs(delta_y)):
-        if gpio.input(y_axis_limit) == 0:
+        if gpio.input(y_axis_limit) == 0 and gpio.input(em_stop_sense_normal)==1 :
             gpio. output(pulse_pinY, gpio.HIGH)
             sleep(step_time)
             gpio.output(pulse_pinY, gpio.LOW)
@@ -392,6 +402,10 @@ try:
     # turn leds off in case they were left on
     gpio.output(Green_led_dynamic,gpio.LOW)
     gpio.output(Green_led_static,gpio.LOW)
+    if(gpio.input(em_stop_sense_normal)!= 1):
+        print("Emergency stop button active or 24 volt power supply is not on")
+        print("Exiting program please rectify the problem")
+        exit()
     # Creating log files
     logstart = datetime.datetime.now()
     logFileName = CreateLogFileName(logstart)
@@ -419,7 +433,7 @@ try:
         gpio.output(direction_pin2,cw_direction)
         
         # check first that limit switch is not being touched, move out if it is
-        if(gpio.input(x_axis_limit)!=0):
+        if(gpio.input(x_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_X):
                 gpio.output(pulse_pin2,gpio.HIGH)
                 gpio.output(pulse_pin,gpio.HIGH)
@@ -432,7 +446,7 @@ try:
         gpio.output(Green_led_dynamic,gpio.HIGH) # Green led on
         
         # home to x limit switch, to the right/towards motor A; until limit switch pressed
-        while(gpio.input(x_axis_limit) == 0):
+        while(gpio.input(x_axis_limit) == 0 and gpio.input(em_stop_sense_normal)==1 ):
             gpio.output(pulse_pin2,gpio.HIGH)
             gpio.output(pulse_pin,gpio.HIGH)
             sleep(.001)
@@ -447,7 +461,7 @@ try:
         gpio.output(direction_pin,ccw_direction)
         
         # move away from home position (away from limit switch by certain number of steps)
-        if(gpio.input(x_axis_limit)!=0):
+        if(gpio.input(x_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_X):
                 gpio.output(pulse_pin2,gpio.HIGH)
                 gpio.output(pulse_pin,gpio.HIGH)
@@ -462,7 +476,7 @@ try:
         gpio.output(direction_pin,ccw_direction) # to motors
         gpio.output(direction_pin2,cw_direction)
         
-        if(gpio.input(z_axis_limit)!=0):
+        if(gpio.input(z_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Z):
                 gpio.output(pulse_pin,gpio.HIGH)
                 gpio.output(pulse_pin2,gpio.HIGH)
@@ -474,7 +488,7 @@ try:
         
         gpio.output(Green_led_dynamic,gpio.HIGH) # Green led on
         log.write("Move to Z axis home\n")
-        while(gpio.input(z_axis_limit)==0):
+        while(gpio.input(z_axis_limit)==0 and gpio.input(em_stop_sense_normal)==1 ):
             gpio.output(pulse_pin,gpio.HIGH)
             gpio.output(pulse_pin2,gpio.HIGH)
             sleep(.001)
@@ -489,7 +503,7 @@ try:
         gpio.output(direction_pin,cw_direction) # away from motors
         gpio.output(direction_pin2,ccw_direction)
         
-        if(gpio.input(z_axis_limit)!=0):
+        if(gpio.input(z_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Z):
                 gpio.output(pulse_pin,gpio.HIGH)
                 gpio.output(pulse_pin2,gpio.HIGH)
@@ -501,7 +515,7 @@ try:
         # Y HOMING                
         log.write("Y axis calibration move to home position\n")
         gpio.output(direction_pinY,cw_direction)
-        if(gpio.input(y_axis_limit)!=0):
+        if(gpio.input(y_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Y):
                 gpio.output(pulse_pinY,gpio.HIGH)
                 sleep(0.001)
@@ -510,7 +524,7 @@ try:
             sleep(1)
             
         gpio.output(direction_pinY,cw_direction)    
-        while(gpio.input(y_axis_limit)==0):
+        while(gpio.input(y_axis_limit)==0 and gpio.input(em_stop_sense_normal)==1 ):
             gpio.output(pulse_pinY,gpio.HIGH)
             sleep(0.001)
             gpio.output(pulse_pinY,gpio.LOW)
@@ -518,7 +532,7 @@ try:
         sleep(1)
         
         gpio.output(direction_pinY,ccw_direction)
-        if(gpio.input(y_axis_limit)!=0):
+        if(gpio.input(y_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Y):
                 gpio.output(pulse_pinY,gpio.HIGH)
                 sleep(0.001)
@@ -683,6 +697,10 @@ try:
                         #Signal_Unity_Off()
                         sleep(0.2)
                         rowNumber+=1
+                        if(gpio.input(em_stop_sense_normal)!=1 and gpio.input(em_stop_sense_stopped)!=0):
+                            print("Emergency stop sensed exiting program")
+                            exit()
+                        
                         
                     else: # if file is complete, copy data file to backup
                         datafile.close()
@@ -694,7 +712,10 @@ try:
                 shutil.move(inputfilename,outputfilename)
                 log.flush()
                 os.fsync(log)
-
+                if gpio.input(em-stop-sense-normal)!=1 and gpio.input(em-stop-sense-stopped)!=0:
+                    print("Emergency stop sensed exiting program")
+                    exit()
+                    
                 
                 #ToDo: prompt to continue here
                 print("Block complete ")
@@ -721,7 +742,7 @@ try:
                         elif response4 == 'q' or response4 == 'Q':
                             log.close()
                             exit()
-                    
+
                 
         log.close()
         for b in range(10):

@@ -22,6 +22,11 @@ y_axis_limit    = 22
 Green_led_dynamic = 23
 Green_led_static = 24
 
+#GPIO variables for Emergency Stop switch sense
+em_stop_sense_normal = 4 # emergency stop switch sensing high 2.4volts (logic 1 or high) when operation normally 24 power on when low emergency stop is pressed
+em_stop_sense_stopped = 5 # when high 2.4 volts (logic 1 or high) emergency stip button has been press and is activewhen low operation is normal ok
+
+
 
 gpio.setmode(gpio.BCM)
 gpio.setwarnings(False)
@@ -43,6 +48,10 @@ gpio.setup(Green_led_static, gpio.OUT)
 gpio.output(direction_pin,cw_direction) # left motor (A)
 gpio.output(direction_pin2,ccw_direction) # right motor (b)
 gpio.output(direction_pinY,cw_direction) # y axis motor
+
+#emergency stop switch sensing connection setup
+gpio.setup(em_stop_sense_normal,gpio.IN)
+gpio.setup(em_stop_sense_stopped, gpio.IN)
 
 cycle=True
 x_step_count=0
@@ -131,7 +140,7 @@ def move_to_position(new_position, current_position, step_time):
         gpio.output(direction_pin2,ccw_direction)
     
     for x in range(max_steps):
-        if(gpio.input(x_axis_limit) == 0 and gpio.input(z_axis_limit) == 0):
+        if(gpio.input(x_axis_limit) == 0 and gpio.input(z_axis_limit) == 0 and gpio.input(em_stop_sense_normal) == 1):
             if x < a_steps:
                 gpio.output(pulse_pin,gpio.HIGH)
             if x < b_steps:
@@ -180,6 +189,10 @@ def CreateLogFileName(x: datetime):
 try:
     logstart = datetime.datetime.now()
     logFileName = CreateLogFileName(logstart)
+    if(gpio.input(em_stop_sense_normal)!= 1):
+        print("Emergency stop button active or 24 volt power supply is not on")
+        print("Exiting program please rectify the problem")
+        exit()
     log = open(logFileName,"w")
     print(f"Starting Calibration at {logstart}")
     confirm = False
@@ -198,7 +211,7 @@ try:
         gpio.output(direction_pin,cw_direction)
         gpio.output(direction_pin2,cw_direction)
         
-        if(gpio.input(x_axis_limit)!=0):
+        if(gpio.input(x_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_X):
                 gpio.output(pulse_pin2,gpio.HIGH)
                 gpio.output(pulse_pin,gpio.HIGH)
@@ -210,7 +223,7 @@ try:
             
         gpio.output(Green_led_static,gpio.HIGH) # Green led on
         
-        while(gpio.input(x_axis_limit) == 0):
+        while(gpio.input(x_axis_limit) == 0 and gpio.input(em_stop_sense_normal)==1 ):
             gpio.output(pulse_pin2,gpio.HIGH)
             gpio.output(pulse_pin,gpio.HIGH)
             sleep(.001)
@@ -225,7 +238,7 @@ try:
         gpio.output(direction_pin,ccw_direction)
         
         # move away from start
-        if(gpio.input(x_axis_limit)!=0):
+        if(gpio.input(x_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_X):
                 gpio.output(pulse_pin2,gpio.HIGH)
                 gpio.output(pulse_pin,gpio.HIGH)
@@ -236,7 +249,7 @@ try:
             sleep(1)
             
         gpio.output(Green_led_static,gpio.HIGH) # Green led on    
-        while(gpio.input(x_axis_limit) == 0):
+        while(gpio.input(x_axis_limit) == 0 and gpio.input(em_stop_sense_normal)==1 ):
             gpio.output(pulse_pin2,gpio.HIGH)
             gpio.output(pulse_pin,gpio.HIGH)
             sleep(.001)
@@ -253,7 +266,7 @@ try:
         gpio.output(direction_pin,cw_direction)
         gpio.output(direction_pin2,cw_direction)
         
-        if(gpio.input(x_axis_limit)!=0):
+        if(gpio.input(x_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_X):
                 gpio.output(pulse_pin2,gpio.HIGH)
                 gpio.output(pulse_pin,gpio.HIGH)
@@ -266,7 +279,7 @@ try:
         gpio.output(direction_pin,ccw_direction) # to motors
         gpio.output(direction_pin2,cw_direction)
         
-        if(gpio.input(z_axis_limit)!=0):
+        if(gpio.input(z_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Z):
                 gpio.output(pulse_pin,gpio.HIGH)
                 gpio.output(pulse_pin2,gpio.HIGH)
@@ -278,7 +291,7 @@ try:
         
         gpio.output(Green_led_static,gpio.HIGH) # Green led on
         log.write("Move to Z axis home\n")
-        while(gpio.input(z_axis_limit)==0):
+        while(gpio.input(z_axis_limit)==0) and gpio.input(em_stop_sense_normal)==1 :
             gpio.output(pulse_pin,gpio.HIGH)
             gpio.output(pulse_pin2,gpio.HIGH)
             sleep(.001)
@@ -293,7 +306,7 @@ try:
         gpio.output(direction_pin,cw_direction) # away from motors
         gpio.output(direction_pin2,ccw_direction)
         
-        if(gpio.input(z_axis_limit)!=0):
+        if(gpio.input(z_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Z):
                 gpio.output(pulse_pin,gpio.HIGH)
                 gpio.output(pulse_pin2,gpio.HIGH)
@@ -305,7 +318,7 @@ try:
             
         log.write("Move to Z axis end to count number of steps\n")
         gpio.output(Green_led_static,gpio.HIGH) # Green led on
-        while(gpio.input(z_axis_limit)==0):
+        while(gpio.input(z_axis_limit)==0 and gpio.input(em_stop_sense_normal)==1 ):
             gpio.output(pulse_pin,gpio.HIGH)
             gpio.output(pulse_pin2,gpio.HIGH)
             sleep(.001)
@@ -323,7 +336,7 @@ try:
         gpio.output(direction_pin2,cw_direction)
         
 
-        if(gpio.input(z_axis_limit)!=0):
+        if(gpio.input(z_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Z):
                 gpio.output(pulse_pin,gpio.HIGH)
                 gpio.output(pulse_pin2,gpio.HIGH)
@@ -337,7 +350,7 @@ try:
         gpio.output(direction_pin,cw_direction)
         gpio.output(direction_pin2,cw_direction)
 
-        if(gpio.input(x_axis_limit)!=0):
+        if(gpio.input(x_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_X):
                 gpio.output(pulse_pin,gpio.HIGH)
                 gpio.output(pulse_pin2,gpio.HIGH)
@@ -347,7 +360,7 @@ try:
                 sleep(.0005)
             sleep(1)
             
-        while(gpio.input(x_axis_limit) == 0):
+        while(gpio.input(x_axis_limit) == 0 and gpio.input(em_stop_sense_normal)==1 ):
             gpio.output(pulse_pin,gpio.HIGH)
             gpio.output(pulse_pin2,gpio.HIGH)
             sleep(.001)
@@ -362,7 +375,7 @@ try:
         gpio.output(direction_pin2,ccw_direction)
         
         # move away from start
-        if(gpio.input(x_axis_limit)!=0):
+        if(gpio.input(x_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_X):
                 gpio.output(pulse_pin,gpio.HIGH)
                 gpio.output(pulse_pin2,gpio.HIGH)
@@ -375,7 +388,7 @@ try:
         gpio.output(direction_pin,cw_direction)# away from motors
         gpio.output(direction_pin2,ccw_direction)
         
-        if(gpio.input(z_axis_limit)!=0):
+        if(gpio.input(z_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Z):
                 gpio.output(pulse_pin,gpio.HIGH)
                 gpio.output(pulse_pin2,gpio.HIGH)
@@ -389,7 +402,7 @@ try:
         gpio.output(direction_pin2,cw_direction)
         
         log.write("Move to Z axis home second time\n")
-        while(gpio.input(z_axis_limit)==0):
+        while(gpio.input(z_axis_limit)==0 and gpio.input(em_stop_sense_normal)==1 ):
             gpio.output(pulse_pin,gpio.HIGH)
             gpio.output(pulse_pin2,gpio.HIGH)
             sleep(.001)
@@ -403,7 +416,7 @@ try:
         gpio.output(direction_pin,cw_direction)
         gpio.output(direction_pin2,ccw_direction)
         
-        if(gpio.input(z_axis_limit)!=0):
+        if(gpio.input(z_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Z):
                 gpio.output(pulse_pin,gpio.HIGH)
                 gpio.output(pulse_pin2,gpio.HIGH)
@@ -416,7 +429,7 @@ try:
         log.write("Y axis calibration move to home position\n")
         
         gpio.output(direction_pinY,cw_direction)
-        if(gpio.input(y_axis_limit)!=0):
+        if(gpio.input(y_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Y):
                 gpio.output(pulse_pinY,gpio.HIGH)
                 sleep(0.001)
@@ -426,7 +439,7 @@ try:
             
         gpio.output(direction_pinY,cw_direction)    
         while(gpio.input(y_axis_limit)==0):
-            gpio.output(pulse_pinY,gpio.HIGH)
+            gpio.output(pulse_pinY,gpio.HIGH and gpio.input(em_stop_sense_normal)==1 )
             sleep(0.001)
             gpio.output(pulse_pinY,gpio.LOW)
             sleep(0.0005)
@@ -435,7 +448,7 @@ try:
                
         log.write("Y axis calibration\n")
         gpio.output(direction_pinY,ccw_direction)
-        if(gpio.input(y_axis_limit)!=0):
+        if(gpio.input(y_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Y):
                 gpio.output(pulse_pinY,gpio.HIGH)
                 sleep(0.001)
@@ -443,7 +456,7 @@ try:
                 sleep(0.0005)
             sleep(1)
             
-        while(gpio.input(y_axis_limit)==0):
+        while(gpio.input(y_axis_limit)==0 and gpio.input(em_stop_sense_normal)==1 ):
             gpio.output(pulse_pinY,gpio.HIGH)
             sleep(0.001)
             gpio.output(pulse_pinY,gpio.LOW)
@@ -455,7 +468,7 @@ try:
         log.write(f"Y axis max steps {y_max}\n")
         
         gpio.output(direction_pinY,cw_direction)
-        if(gpio.input(y_axis_limit)!=0):
+        if(gpio.input(y_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Y):
                 gpio.output(pulse_pinY,gpio.HIGH)
                 sleep(0.001)
@@ -464,7 +477,7 @@ try:
             sleep(1)
         
 
-        while(gpio.input(y_axis_limit)==0):
+        while(gpio.input(y_axis_limit)==0 and gpio.input(em_stop_sense_normal)==1 ):
             gpio.output(pulse_pinY,gpio.HIGH)
             sleep(0.001)
             gpio.output(pulse_pinY,gpio.LOW)
@@ -472,7 +485,7 @@ try:
         sleep(1)
         
         gpio.output(direction_pinY,ccw_direction)
-        if(gpio.input(y_axis_limit)!=0):
+        if(gpio.input(y_axis_limit)!=0 and gpio.input(em_stop_sense_normal)==1 ):
             for x in range(move_out_steps_max_Y):
                 gpio.output(pulse_pinY,gpio.HIGH)
                 sleep(0.001)
@@ -480,8 +493,15 @@ try:
                 sleep(0.0005)
             sleep(1)
         log.write("Y axis is at Home position\n")
+        if gpio.input(em_stop_sense_normal)!=1 and gpio.input(em_stop_sense_stopped) !=0:
+            print("emergency stop bitton active Exiting program")
+            exit()
+                                                              
         
         if(x_max > 900 and z_max > 1900):
+            x_max-= move_out_steps_max_X # subtract move out steps as calibration doesn't take this into account
+            y_max-= move_out_steps_max_Y
+            z_max-= move_out_steps_max_Z
             log.write("Writing Calibration data\n")
             t = datetime.datetime.now()
             FileName = CreateFileName(t)
