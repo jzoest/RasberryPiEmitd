@@ -30,7 +30,7 @@ def CreateDataFileName(x: datetime, particpant):
     hr    = x.hour
     mins  = x.minute
     sec   = x.second
-    result = f"{Data_File_Path}//LightData_{year}{month}{day}T{hr}{mins}{sec}_{particpant}.csv"
+    result = f"{Data_File_Path}//real_light_data_{year}{month}{day}T{hr}{mins}{sec}_{particpant}.csv"
     return result
     
 def ValidateParticipantCode():
@@ -42,7 +42,7 @@ def ValidateParticipantCode():
                participant_number = participant_code[1] + participant_code[2]
                if participant_number.isnumeric():
                    if int(participant_number) > 0:
-                       start_experiment = input("Valid participant code, please ensure participant is 60cm away from static LED target. Press Y to continue or Q to quit:")
+                       start_experiment = input("Valid participant code, please ensure participant is 60cm away from static LED target. Start recording PupilLabs now then press Y to continue or Q to quit:")
                        if start_experiment == "Y" or start_experiment == "y":
                            response = True
                        elif start_experiment == "Q" or start_experiment == "q":
@@ -105,10 +105,19 @@ def StartTrial(participant, led_combination, trialDuration, totalTrialTime):
     start_timestamp = datetime.datetime.now()
     
     steps = int(totalTrialTime/trialDuration)
+    
+    counter = 0
     # starttrials
-    for trial in range(steps):
+    #for trial in range(steps):
+    #    randomDwell = random.uniform(0.8, 1.2)
+    #   randomColour = random.randint(1,6)
+    #    RandomiseColour(led_combination,randomColour,1)
+    
+    while counter < totalTrialTime:
+        randomDwell = random.uniform(0.8, 1.2)
         randomColour = random.randint(1,6)
-        RandomiseColour(led_combination,randomColour,1)
+        RandomiseColour(led_combination,randomColour,randomDwell)
+        counter += randomDwell
 
     # initialise timestamp to output file
     end_timestamp = datetime.datetime.now()
